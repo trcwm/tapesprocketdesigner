@@ -3,6 +3,8 @@
 This is a free (open source) Python script for creating feeder sprockets for e.g. perforated tape or film advance. I wrote it for myself to generate SMD tape-and-reel feed sprockets, but it might also be useful for making replacement sprockets for 8/16/35mm film, microfilm and paper-tape systems whose original reader hardware no longer exists or is difficult to find replacement parts for. The output is a .DXF template suitable for laser cutting, 3D printing or CNC machining.
 
 
+
+
 ## Sprocket design goals / differences from other sprocket types
 
 The drive sprocket's dimensions are specified mainly by the number of teeth, width (or diameter) of the sprocket holes, and the pitch (distance between sprocket hole centers). The tape is usually advanced either tangentally to the sprocket, or partially wrapped around the sprocket. Thus the distance between the <i>outside edges</i> of any two teeth at any point, either tangent to the sprocket or along the circumference of the sprocket, should never exceed the distance between the outer edges of any two sprocket holes (the taper of the teeth is computed to counteract the radial splay of the teeth). Additionally, a landing area (flank) is cut at the base of the teeth matching the thickness of the tape, giving it a place to 'catch' when pressed against the sprocket's inner diameter. Unlike e.g. roller chain sprockets or spur gears, no undercut (cuts below the inner diameter) is provided for rollers or a mating gear's teeth, and no special geometry is needed along the sides of the teeth.
