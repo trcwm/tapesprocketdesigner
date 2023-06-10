@@ -3,14 +3,14 @@
 This is a free (open source) Python script for creating feeder sprockets for e.g. perforated tape or film advance. I wrote it for myself to generate SMD tape-and-reel feed sprockets, but it might also be useful for making replacement sprockets for 8/16/35mm film, microfilm and paper-tape systems whose original reader hardware no longer exists or is difficult to find replacement parts for. The output is a .DXF template suitable for laser cutting, 3D printing or CNC machining.
 
 
-Sprocket design goals / differences from other sprocket types
+## Sprocket design goals / differences from other sprocket types
 
 The drive sprocket's dimensions are specified mainly by the number of teeth, width (or diameter) of the sprocket holes, and the pitch (distance between sprocket hole centers). The tape is usually advanced either tangentally to the sprocket, or partially wrapped around the sprocket. Thus the distance between the <i>outside edges</i> of any two teeth at any point, either tangent to the sprocket or along the circumference of the sprocket, should never exceed the distance between the outer edges of any two sprocket holes (the taper of the teeth is computed to counteract the radial splay of the teeth). Additionally, a landing area (flank) is cut at the base of the teeth matching the thickness of the tape, giving it a place to 'catch' when pressed against the sprocket's inner diameter. Unlike e.g. roller chain sprockets or spur gears, no undercut (cuts below the inner diameter) is provided for rollers or a mating gear's teeth, and no special geometry is needed along the sides of the teeth.
 
 
 
 
-Some Terminology:
+## Some Terminology
 
 Pitch: The center-to-center distance between sprocket holes, and thus the sprocket teeth.
 
@@ -23,7 +23,7 @@ Tooth Land: This is the surface left if the tip of the tooth has been blunted or
 
 
 
-Basic usage:
+## Basic usage
 
 Fill in all the values called for in 'Basic Parameters'. Aside from angles, which are in degrees, use any unit of measurement you prefer (inch/mm/etc.), as long as it is consistent; output will be in the same units. If you desire a specific tooth taper angle, enter it, otherwise just press "Compute / auto angle" to suggest an angle and generate the sprocket.
 
@@ -38,7 +38,7 @@ Outer diameter: This is the diameter at the tips of the teeth. By playing with t
 Note that the angle auto-suggest feature is currently broken (will return incorrect results). It will (usually) calculate an angle that will allow the tape to *wrap around* the sprocket at any radius from the base of the teeth, but what you really want is the tape to fit at an arbitrary angle across the teeth (specifically, the outer edges of whatever teeth it intersects while tangent to the sprocket should not exceed the outsides of the sprocket holes). For now you might have to cut a few gears and experiment, or just set the angle arbitrarily high.
 
 
-Extra Options:
+## Extra Options:
 If you will be cutting out the sprocket on a CNC mill, outside pocketing will leave some material at the base of each tooth flank due to the diameter of the round cutter. Enabling 'Remove cutter leftovers' and entering the cutter diameter will add DXF points (drill hits) near the tooth edges to remove this material. Users of other fabrication methods can probably ignore this option.
 
 If designing a sprocket in one measurement system for use in another, you can optionally select a unit conversion to be applied when writing out the DXF file. E.g. if your tape is specced in mm but your CAD/CAM software expects inches, select 'mm to inches' before saving the DXF.
@@ -64,9 +64,4 @@ Unless you have some fancy software sweeping the sprocket teeth into 3D, you are
 w = sqrt(d^2 - t^2)
 
 where d is the sprocket hole diameter and t is the stock thickness.
-
-
-
-
-
 
