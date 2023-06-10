@@ -52,7 +52,7 @@ Right now the arc between teeth is output as a straight line, not an arc or seri
 
 
 
-Other notes:
+## Other notes:
 
 "Auto angle" calculation is only done if the angle field is blank: if there is a number there (including a previous auto-calculation), it will be left alone. If you have changed any parameters and want to redo "auto angle", please delete the contents of this box.
 
