@@ -8,7 +8,8 @@ authors = [
   { name="Niels Moseley", email="sofascener@gmail.com" },
 ]
 dependencies = [
-    "PyQt5"
+    "PyQt5",
+    "ezdxf"
 ]
 
 readme = "README.md"

@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 import sys
 import math
-#import ezdxf
+import ezdxf
+from ezdxf import units
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -11,105 +12,6 @@ if (__name__ == "__main__"):
     import dxf_templates_b2
 else:
     import tapesprocketdesigner.dxf_templates_b2
-
-# See: https://images.autodesk.com/adsk/files/autocad_2012_pdf_dxf-reference_enu.pdf
-class DXFGenerator:
-
-    def __init__(self):
-        self.dxf = ""
-
-    def add(self, str):
-        self.dxf += str
-
-    def insertCode(self, code, value):
-        self.dxf += code + "\n" + value + "\n"
-
-    def line(self, theLine, scale):
-        self.insertCode(   '0', 'LINE' )
-        self.insertCode(   '8', 'Default' ) # layer name
-        self.insertCode(  '62', '4' )
-        self.insertCode(   '5', '255' ) # DXF entity handle
-        self.insertCode( '100', 'AcDbEntity' )
-        self.insertCode( '100', 'AcDbLine' )
-        self.insertCode(  '10', '{:.3f}'.format(theLine[0][0] * scale) ) # line start x
-        self.insertCode(  '20', '{:.3f}'.format(theLine[0][1] * scale) ) # line start y
-        self.insertCode(  '30', '0.0' )
-        self.insertCode(  '11', '{:.3f}'.format(theLine[1][0] * scale) ) # line end x
-        self.insertCode(  '21', '{:.3f}'.format(theLine[1][1] * scale) ) # line end x
-        self.insertCode(  '31', '0.0' )        
-
-    def point(self, point, scale):
-        self.insertCode(   '0', 'POINT' )
-        self.insertCode(   '8', 'Drills' ) # layer name
-        self.insertCode(  '62', '4' )
-        self.insertCode(   '5', '255' ) # DXF entity handle
-        self.insertCode( '100', 'AcDbEntity' )
-        self.insertCode( '100', 'AcDbPoint' )
-        self.insertCode(  '10', '{:.3f}'.format(point[0] * scale) )
-        self.insertCode(  '20', '{:.3f}'.format(point[1] * scale) )
-        self.insertCode(  '30', '0.0' )
-
-    def layerTable(self, layers):
-        self.insertCode('0', 'TABLE')
-        self.insertCode('2', 'LAYER')
-        self.insertCode('5', '2')
-        self.insertCode('330', '0')
-        self.insertCode('100', 'AcDbSymbolTable')
-        # group code 70 tells a reader how many table records to expect (e.g. pre-allocate memory for).
-        # It must be greater or equal to the actual number of records
-        self.insertCode('70',str(len(layers)))
-
-        for layer in layers:
-            self.insertCode('0', 'LAYER')
-            self.insertCode('5', '10')
-            self.insertCode('330', '2')
-            self.insertCode('100', 'AcDbSymbolTableRecord')
-            self.insertCode('100', 'AcDbLayerTableRecord')
-            self.insertCode('2', layer)
-            self.insertCode('70', '0')
-            self.insertCode('62', '7')
-            self.insertCode('6', 'CONTINUOUS')
-
-        self.insertCode('0','ENDTAB')
-        self.insertCode('0','ENDSEC')
-
-    def startLWPolyline(self, numVerteces):
-        self.insertCode(   '0', 'LINE' )
-        self.insertCode(   '8', 'Default' ) # layer name
-        self.insertCode(  '62', '4' )
-        self.insertCode(   '5', '255' ) # DXF entity handle
-        self.insertCode( '100', 'AcDbEntity' )
-        self.insertCode( '100', 'AcDbPolyline' )
-        self.insertCode(  '10', '{:.3f}'.format(theLine[0][0] * scale) ) # line start x
-        self.insertCode(  '20', '{:.3f}'.format(theLine[0][1] * scale) ) # line start y
-        self.insertCode(  '30', '0.0' )
-        self.insertCode(  '11', '{:.3f}'.format(theLine[1][0] * scale) ) # line end x
-        self.insertCode(  '21', '{:.3f}'.format(theLine[1][1] * scale) ) # line end x
-        self.insertCode(  '31', '0.0' )          
-
-    def generate(self, lines) -> str :
-    
-        # handle unit scaling if any
-        unit_scale = 1
-        self.dxf = ""
-
-        # headery crap
-        self.insertCode( '999', 'Tape sprocket created by tapegear.py' ) # bogus code 'almost' universally accepted as a comment; comment this line if your DXF parser complains
-        self.add( dxf_templates_b2.r14_header )
-        self.layerTable(["Default", "Drills"])
-        self.add( dxf_templates_b2.r14_blocks )
-        
-        # now the actual geometry...
-        for L in lines:
-            self.line(L, unit_scale)
-
-        #for i in rect_comp_drills:
-        #    dxf_point(i, unit_scale)
-
-        # and footer
-        self.add( dxf_templates_b2.r14_footer )
-
-        return self.dxf
 
 class SprocketCanvas(QWidget):
 
@@ -254,6 +156,9 @@ class MainWindow(QMainWindow):
         self.toothFlankHeight.editingFinished.connect(self.computeGear)
         self.toothLengthPct.editingFinished.connect(self.computeGear)
 
+        # init data
+        self.lines = []
+
         self.show()
 
     def computeGear(self):
@@ -384,16 +289,16 @@ class MainWindow(QMainWindow):
         except ValueError:
             comp_r = 0
 
-        rect_lines = []
+        self.lines = []
         rect_comp_drills = []
 
         for i in polar_lines:
-            rect_lines.append([self.p2r(i[0][0],i[0][1]),  self.p2r(i[1][0],i[1][1])])
+            self.lines.append([self.p2r(i[0][0],i[0][1]),  self.p2r(i[1][0],i[1][1])])
 
         for i in polar_comp_drills:
             rect_comp_drills.append(self.p2r(i[0],i[1]))
 
-        self.sprocketCanvas.setLines(rect_lines, user_outer_radius)
+        self.sprocketCanvas.setLines(self.lines, user_outer_radius)
 
         self.innerDiameter.setText("{:.3f}".format(inner_radius * 2))
         self.designDiameter.setText("{:.3f}".format(design_radius * 2))
@@ -405,6 +310,10 @@ class MainWindow(QMainWindow):
         theta = theta * (math.pi / 180.0)
         return r*math.cos(theta), r*math.sin(theta)
 
+    def p2r_tuple(self, r, theta):
+        #python's builtin math functions work in radians, so convert...
+        theta = theta * (math.pi / 180.0)
+        return (r*math.cos(theta), r*math.sin(theta))
 
     def dist(self, xy1, xy2):
         dist_x = abs(xy1[0] - xy2[0])
@@ -416,14 +325,20 @@ class MainWindow(QMainWindow):
         if not self.sprocketCanvas.getLines():
             return            
 
-        dxfgen = DXFGenerator()
-        dxf = dxfgen.generate(self.sprocketCanvas.getLines())
-
         fileName, _ = QFileDialog.getSaveFileName(self, "Export as DXF","","DXF Files (*.dxf)")
         if fileName:
-            DFXFile = open(fileName, "w")
-            DFXFile.write(dxf)
-            DFXFile.close()
+            #doc = ezdxf.new("R2000", setup=True)
+            doc = ezdxf.new("R2000")
+            doc.units = units.MM
+            msp = doc.modelspace()
+            #pline = msp.add_lwpolyline(self.points)
+
+            for L in self.lines:
+                pstart = (L[0][0], L[0][1])
+                pstop  = (L[1][0], L[1][1])
+                msp.add_line(pstart, pstop)
+
+            doc.saveas(fileName)
 
 def main():
     app = QApplication(sys.argv)
