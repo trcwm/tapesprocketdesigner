@@ -1,4 +1,7 @@
 #!/usr/bin/python3
+# Copyright 2023 - 2023, Niels Moseley and the pyrigremote contributors
+# SPDX-License-Identifier: GPL-3.0-only
+
 import sys
 import math
 import ezdxf
@@ -9,47 +12,15 @@ from PySide6.QtWidgets import *
 from PySide6.QtGui import *
 from PySide6.QtCore import Qt, QPointF
 
-class SprocketCanvas(QWidget):
-
-    def __init__(self):
-        super().__init__()
-        self.lines = []
-        self.userOuterRadius = 1000000
-
-    def paintEvent(self, paintEvent):
-        painter = QPainter(self)
-        brush = QBrush()
-        brush.setColor(QColor('lightgrey'))
-        brush.setStyle(Qt.BrushStyle.SolidPattern)
-        painter.fillRect(self.rect(), brush)
-
-        center = self.rect().center()
-
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(QColor('black'))
-        for L in self.lines:
-            start = QPointF(center.x() + self.k*L[0][0], center.y() - self.k*L[0][1])
-            stop  = QPointF(center.x() + self.k*L[1][0], center.y() - self.k*L[1][1])
-            painter.drawLine(start, stop)
-
-    def setLines(self, lines, user_outer_radius):
-        self.lines = lines
-        self.userOuterRadius = user_outer_radius
-        self.k = ((min(self.width(), self.height()) + 0.0) / (self.userOuterRadius*2.0)) * 0.75
-        self.update()
-
-    def getLines(self): 
-        return self.lines
-
-    def resizeEvent(self, sizeEvent):
-        self.k = ((min(self.width(), self.height()) + 0.0) / (self.userOuterRadius*2.0)) * 0.75
+from version import *
+from customlabel import *
+from sprocketcanvas import *
 
 class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Tape Sprocket Designer')
-
+        self.setWindowTitle('Tape Sprocket Designer {:s}'.format(version))
         self.mainWidget = QWidget()
         self.mainLayout = QHBoxLayout()
         self.mainWidget.setLayout(self.mainLayout)
@@ -100,22 +71,34 @@ class MainWindow(QMainWindow):
         gridLayout2 = QGridLayout()
         self.reportGrp.setLayout(gridLayout2)
 
-        gridLayout2.addWidget(QLabel("Inner diameter"), 0,0)
+        label = CustomLabel("Inner diameter")
+        label.enter.connect(self.onInnerEnter)
+        label.leave.connect(self.onLeave)
+        gridLayout2.addWidget(label, 0,0)
         self.innerDiameter = QLabel("N/A")
         gridLayout2.addWidget(self.innerDiameter, 0,1)
         gridLayout2.addWidget(QLabel("mm"), 0,2)
 
-        gridLayout2.addWidget(QLabel("Design diameter"), 1,0)
+        label = CustomLabel("Design diameter")
+        label.enter.connect(self.onDesignEnter)
+        label.leave.connect(self.onLeave)
+        gridLayout2.addWidget(label, 1,0)
         self.designDiameter = QLabel("N/A")
         gridLayout2.addWidget(self.designDiameter, 1,1)
         gridLayout2.addWidget(QLabel("mm"), 1,2)
 
-        gridLayout2.addWidget(QLabel("Outer diameter"), 2,0)
+        label = CustomLabel("Outer diameter")
+        label.enter.connect(self.onOuterEnter)
+        label.leave.connect(self.onLeave)
+        gridLayout2.addWidget(label, 2,0)
         self.outerDiameter = QLabel("N/A")
         gridLayout2.addWidget(self.outerDiameter, 2,1)
         gridLayout2.addWidget(QLabel("mm"), 2,2)
 
-        gridLayout2.addWidget(QLabel("Max. outer diameter"), 3,0)
+        label = CustomLabel("Max. outer diameter")
+        label.enter.connect(self.onMaxOuterEnter)
+        label.leave.connect(self.onLeave)
+        gridLayout2.addWidget(label, 3,0)
         self.maxOuterDiameter = QLabel("N/A")
         gridLayout2.addWidget(self.maxOuterDiameter, 3,1)
         gridLayout2.addWidget(QLabel("mm"), 3,2)        
@@ -164,7 +147,9 @@ class MainWindow(QMainWindow):
         # init data
         self.lines = []
         self.max_outer_radius = 0
-
+        self.inner_radius = 0
+        self.outer_radius = 0
+        self.design_radius = 0
         self.show()
 
     def computeGear(self):
@@ -201,14 +186,14 @@ class MainWindow(QMainWindow):
 
 
         design_circumference = n_teeth * tooth_pitch
-        design_radius = design_circumference / (2.0*math.pi)
-        inner_radius = design_radius - flank_height
+        self.design_radius = design_circumference / (2.0*math.pi)
+        self.inner_radius = self.design_radius - flank_height
 
         # get the allowed range for the outer radius
         # to do this, need to get (or suggest) the tooth angle. This will be related to 'splay' described above.
         # Unless the user has chosen (or overridden) a desired angle, calculate and use the recommended value
 
-        chord_angle = 2.0 * (180.0/math.pi) * math.asin(tooth_dia / (2.0 * design_radius))
+        chord_angle = 2.0 * (180.0/math.pi) * math.asin(tooth_dia / (2.0 * self.design_radius))
 
         #try:
         #    tooth_outer_angle = float(toothFaceAngleValue.get())
@@ -226,9 +211,9 @@ class MainWindow(QMainWindow):
         #print("Min. tooth angle: {:f} degrees from vertical".format(tooth_outer_angle))
 
         tooth_face_height = (tooth_dia / 2.0) * math.tan(tooth_inner_angle * (math.pi / 180.0))
-        self.max_outer_radius = design_radius + tooth_face_height
+        self.max_outer_radius = self.design_radius + tooth_face_height
 
-        user_outer_radius = design_radius + ((self.max_outer_radius - design_radius) * (tooth_length_pct/100.0)) #design_radius + (design_radius*0.5) #self.max_outer_radius
+        self.outer_radius = self.design_radius + ((self.max_outer_radius - self.design_radius) * (tooth_length_pct/100.0)) #design_radius + (design_radius*0.5) #self.max_outer_radius
 
         #print("Resulting tooth height (angled portion) = {:f}".format(tooth_face_height))
         #print("Outer radius = {:f}".format(self.max_outer_radius))
@@ -237,7 +222,7 @@ class MainWindow(QMainWindow):
         # Flank (starts,ends): tooth center +/- tooth chordal angle
         # Faces: Remember, working in polar coords. Doublecheck this, but I think where the angle of the ray intersecting the "end of face" (between 0 and chord_angle/2 relative to tooth center) falls will be proportional to where end of face falls between design radius and max. outer radius.
 
-        face_ratio = (user_outer_radius - design_radius) / (self.max_outer_radius - design_radius) # will produce a result between 0 and 1
+        face_ratio = (self.outer_radius - self.design_radius) / (self.max_outer_radius - self.design_radius) # will produce a result between 0 and 1
 
         # Actual angle will be the inverse of this, since where user outer = max outer, angle is 0.
 
@@ -262,17 +247,17 @@ class MainWindow(QMainWindow):
         # Polar angles are usually considered increasing counterclockwise, with zero "to the right" - we'll do the same,
         # going from righthand side to lefthand side of each tooth.
         # Right flank
-            polar_lines.append([ [inner_radius, i-(chord_angle/2)], [design_radius, i-(chord_angle/2)] ])
+            polar_lines.append([ [self.inner_radius, i-(chord_angle/2)], [self.design_radius, i-(chord_angle/2)] ])
         # Right face
-            polar_lines.append([ [design_radius, i-(chord_angle/2)], [user_outer_radius, i-tooth_ending_angle] ])
+            polar_lines.append([ [self.design_radius, i-(chord_angle/2)], [self.outer_radius, i-tooth_ending_angle] ])
         # blunted tip
-            polar_lines.append([ [user_outer_radius, i-tooth_ending_angle], [user_outer_radius, i+tooth_ending_angle] ])
+            polar_lines.append([ [self.outer_radius, i-tooth_ending_angle], [self.outer_radius, i+tooth_ending_angle] ])
         # left face
-            polar_lines.append([ [user_outer_radius, i+tooth_ending_angle], [design_radius, i+(chord_angle/2)] ])
+            polar_lines.append([ [self.outer_radius, i+tooth_ending_angle], [self.design_radius, i+(chord_angle/2)] ])
         # left flank
-            polar_lines.append([ [design_radius, i+(chord_angle/2)], [inner_radius, i+(chord_angle/2)] ])
+            polar_lines.append([ [self.design_radius, i+(chord_angle/2)], [self.inner_radius, i+(chord_angle/2)] ])
         # finally, the space between this and the next tooth
-            polar_lines.append([ [inner_radius, i+(chord_angle/2)], [inner_radius, i+(360.0/n_teeth)-(chord_angle/2)] ])
+            polar_lines.append([ [self.inner_radius, i+(chord_angle/2)], [self.inner_radius, i+(360.0/n_teeth)-(chord_angle/2)] ])
 
 
         # if cutter crap-removal on: remove the shoulder left behind when outside-pocketing concave portions; in this case where the tooth flanks meet the inner radius.
@@ -289,9 +274,9 @@ class MainWindow(QMainWindow):
             for i in tooth_centers:
                 # at end of this tooth
                 # put the hole center @ inside diameter line, 1 cutter radius from edge of tooth
-                polar_comp_drills.append([inner_radius, i+(chord_angle/2) + (360*comp_r/(2*math.pi*(inner_radius - comp_r)))])
+                polar_comp_drills.append([self.inner_radius, i+(chord_angle/2) + (360*comp_r/(2*math.pi*(self.inner_radius - comp_r)))])
                 # at start of next tooth
-                polar_comp_drills.append([inner_radius , i+(360.0/n_teeth)-(chord_angle/2) - (360*comp_r/(2*math.pi*(inner_radius - comp_r)))])
+                polar_comp_drills.append([self.inner_radius , i+(360.0/n_teeth)-(chord_angle/2) - (360*comp_r/(2*math.pi*(self.inner_radius - comp_r)))])
         except ValueError:
             comp_r = 0
 
@@ -304,11 +289,11 @@ class MainWindow(QMainWindow):
         for i in polar_comp_drills:
             rect_comp_drills.append(self.p2r(i[0],i[1]))
 
-        self.sprocketCanvas.setLines(self.lines, user_outer_radius)
+        self.sprocketCanvas.setLines(self.lines, self.outer_radius)
 
-        self.innerDiameter.setText("{:.3f}".format(inner_radius * 2))
-        self.designDiameter.setText("{:.3f}".format(design_radius * 2))
-        self.outerDiameter.setText("{:.3f}".format(user_outer_radius * 2))
+        self.innerDiameter.setText("{:.3f}".format(self.inner_radius * 2))
+        self.designDiameter.setText("{:.3f}".format(self.design_radius * 2))
+        self.outerDiameter.setText("{:.3f}".format(self.outer_radius * 2))
         self.maxOuterDiameter.setText("{:.3f}".format(self.max_outer_radius * 2))
 
     def p2r(self, r, theta):
@@ -374,6 +359,29 @@ class MainWindow(QMainWindow):
             dwg.add(p)
 
             dwg.save()            
+
+    def onInnerEnter(self):
+        if (self.inner_radius > 0):
+            self.sprocketCanvas.setCircle(self.inner_radius)
+
+    def onOuterEnter(self):
+        if (self.outer_radius > 0):
+            self.sprocketCanvas.setCircle(self.outer_radius)
+        return
+
+    def onDesignEnter(self):
+        if (self.design_radius > 0):
+            self.sprocketCanvas.setCircle(self.design_radius)
+        return
+
+    def onMaxOuterEnter(self):
+        if (self.max_outer_radius > 0):
+            self.sprocketCanvas.setCircle(self.max_outer_radius)
+        return
+
+    def onLeave(self):
+        self.sprocketCanvas.setCircle(0)
+        return
 
 def main():
     app = QApplication(sys.argv)

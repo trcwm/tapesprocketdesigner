@@ -5,3 +5,4 @@ dist/
 *.py[cod]
 __pycache__/
 *.dxf
+tapesprocketdesigner/version.py
