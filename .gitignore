@@ -4,3 +4,4 @@ dist/
 *.egg
 *.py[cod]
 __pycache__/
+*.dxf

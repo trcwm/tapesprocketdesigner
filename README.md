@@ -2,8 +2,9 @@
 
 This is a free (open source) Python script for creating feeder sprockets for e.g. perforated tape or film advance. I wrote it for myself to generate SMD tape-and-reel feed sprockets, but it might also be useful for making replacement sprockets for 8/16/35mm film, microfilm and paper-tape systems whose original reader hardware no longer exists or is difficult to find replacement parts for. The output is a .DXF template suitable for laser cutting, 3D printing or CNC machining.
 
-
-
+## Dependencies
+* pyside6
+* ezdxf
 
 ## Sprocket design goals / differences from other sprocket types
 

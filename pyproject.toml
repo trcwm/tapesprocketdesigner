@@ -3,13 +3,14 @@
 [project]
 name = "tapesprocketdesigner"
 description = "An application to design SMD tape sprockets"
-version = "0.1.9"
+version = "0.1.12"
 authors = [
   { name="Niels Moseley", email="sofascener@gmail.com" },
 ]
 dependencies = [
-    "PyQt5",
-    "ezdxf"
+    "pyside6",
+    "ezdxf",
+    "svgwrite"
 ]
 
 readme = "README.md"
@@ -20,9 +21,10 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-    "Operating System :: OS Independent",
-    "Topic :: Computer Aided Design :: Mechanical"
+    "Operating System :: OS Independent"
 ]
+
+#     "Topic :: Computer Aided Design :: Mechanical"
 
 [tool.setuptools.packages.find]
 include = ["tapesprocketdesigner*"]

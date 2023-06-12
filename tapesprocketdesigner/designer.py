@@ -3,15 +3,11 @@ import sys
 import math
 import ezdxf
 from ezdxf import units
+import svgwrite
 
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import Qt, QPointF
-
-if (__name__ == "__main__"):
-    import dxf_templates_b2
-else:
-    import tapesprocketdesigner.dxf_templates_b2
+from PySide6.QtWidgets import *
+from PySide6.QtGui import *
+from PySide6.QtCore import Qt, QPointF
 
 class SprocketCanvas(QWidget):
 
@@ -24,12 +20,12 @@ class SprocketCanvas(QWidget):
         painter = QPainter(self)
         brush = QBrush()
         brush.setColor(QColor('lightgrey'))
-        brush.setStyle(Qt.SolidPattern)
+        brush.setStyle(Qt.BrushStyle.SolidPattern)
         painter.fillRect(self.rect(), brush)
 
         center = self.rect().center()
 
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.setPen(QColor('black'))
         for L in self.lines:
             start = QPointF(center.x() + self.k*L[0][0], center.y() - self.k*L[0][1])
@@ -64,7 +60,7 @@ class MainWindow(QMainWindow):
 
         # setup Basic Parameters group
         self.basicParametersGrp = QGroupBox("Basic Parameters")
-        self.basicParametersGrp.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.basicParametersGrp.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         panelLayout.addWidget(self.basicParametersGrp)
 
         gridLayout = QGridLayout()
@@ -98,7 +94,7 @@ class MainWindow(QMainWindow):
         # setup Report group
 
         self.reportGrp = QGroupBox("Report")
-        self.reportGrp.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.reportGrp.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         panelLayout.addWidget(self.reportGrp)
 
         gridLayout2 = QGridLayout()
@@ -125,12 +121,21 @@ class MainWindow(QMainWindow):
         gridLayout2.addWidget(QLabel("mm"), 3,2)        
 
         # Export to DXF button
-        self.exportButton = QPushButton("Export to DXF")
-        self.exportButton.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.exportButton.pressed.connect(self.onWriteDXF)
-        panelLayout.addWidget(self.exportButton)
+        buttonLayout = QHBoxLayout()
 
-        panelLayout.addSpacerItem(QSpacerItem(0,0, QSizePolicy.Minimum, QSizePolicy.MinimumExpanding))
+        self.exportDXFButton = QPushButton("Export to DXF")
+        self.exportDXFButton.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.exportDXFButton.pressed.connect(self.onWriteDXF)
+        buttonLayout.addWidget(self.exportDXFButton)
+
+        self.exportSVFButton = QPushButton("Export to SVG")
+        self.exportSVFButton.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.exportSVFButton.pressed.connect(self.onWriteSVG)
+        buttonLayout.addWidget(self.exportSVFButton)
+
+        panelLayout.addLayout(buttonLayout)
+
+        panelLayout.addSpacerItem(QSpacerItem(0,0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.MinimumExpanding))
 
         # Generate the right sprocket display
 
@@ -138,7 +143,7 @@ class MainWindow(QMainWindow):
 
         self.sprocketCanvas = SprocketCanvas()
         self.sprocketCanvas.setMinimumSize(200,200)
-        sprocketCanvasSizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sprocketCanvasSizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         #sprocketCanvasSizePolicy.setHeightForWidth(True)
         self.sprocketCanvas.setSizePolicy(sprocketCanvasSizePolicy)
         rightLayout.addWidget(self.sprocketCanvas, 1)
@@ -158,6 +163,7 @@ class MainWindow(QMainWindow):
 
         # init data
         self.lines = []
+        self.max_outer_radius = 0
 
         self.show()
 
@@ -212,26 +218,26 @@ class MainWindow(QMainWindow):
         tooth_inner_angle = 90.0 - tooth_outer_angle - (chord_angle / 2.0)
             #toothFaceAngleValue.set(str(tooth_outer_angle))
 
-        print("Tooth centers angle: {:f}".format(360.0/n_teeth))
-        print("Tooth width contribution: {:f}".format(chord_angle))
-        print("Tooth edges angle: {:f}".format((360.0/n_teeth) + chord_angle))
+        #print("Tooth centers angle: {:f}".format(360.0/n_teeth))
+        #print("Tooth width contribution: {:f}".format(chord_angle))
+        #print("Tooth edges angle: {:f}".format((360.0/n_teeth) + chord_angle))
 
-        print("Design circumference = {:f} radius = {:f}".format(design_circumference, design_radius))
-        print("Min. tooth angle: {:f} degrees from vertical".format(tooth_outer_angle))
+        #print("Design circumference = {:f} radius = {:f}".format(design_circumference, design_radius))
+        #print("Min. tooth angle: {:f} degrees from vertical".format(tooth_outer_angle))
 
         tooth_face_height = (tooth_dia / 2.0) * math.tan(tooth_inner_angle * (math.pi / 180.0))
-        max_outer_radius = design_radius + tooth_face_height
+        self.max_outer_radius = design_radius + tooth_face_height
 
-        user_outer_radius = design_radius + ((max_outer_radius - design_radius) * (tooth_length_pct/100.0)) #design_radius + (design_radius*0.5) #max_outer_radius
+        user_outer_radius = design_radius + ((self.max_outer_radius - design_radius) * (tooth_length_pct/100.0)) #design_radius + (design_radius*0.5) #self.max_outer_radius
 
-        print("Resulting tooth height (angled portion) = {:f}".format(tooth_face_height))
-        print("Outer radius = {:f}".format(max_outer_radius))
+        #print("Resulting tooth height (angled portion) = {:f}".format(tooth_face_height))
+        #print("Outer radius = {:f}".format(self.max_outer_radius))
 
         # From list of tooth centers...
         # Flank (starts,ends): tooth center +/- tooth chordal angle
         # Faces: Remember, working in polar coords. Doublecheck this, but I think where the angle of the ray intersecting the "end of face" (between 0 and chord_angle/2 relative to tooth center) falls will be proportional to where end of face falls between design radius and max. outer radius.
 
-        face_ratio = (user_outer_radius - design_radius) / (max_outer_radius - design_radius) # will produce a result between 0 and 1
+        face_ratio = (user_outer_radius - design_radius) / (self.max_outer_radius - design_radius) # will produce a result between 0 and 1
 
         # Actual angle will be the inverse of this, since where user outer = max outer, angle is 0.
 
@@ -303,7 +309,7 @@ class MainWindow(QMainWindow):
         self.innerDiameter.setText("{:.3f}".format(inner_radius * 2))
         self.designDiameter.setText("{:.3f}".format(design_radius * 2))
         self.outerDiameter.setText("{:.3f}".format(user_outer_radius * 2))
-        self.maxOuterDiameter.setText("{:.3f}".format(max_outer_radius * 2))
+        self.maxOuterDiameter.setText("{:.3f}".format(self.max_outer_radius * 2))
 
     def p2r(self, r, theta):
         #python's builtin math functions work in radians, so convert...
@@ -327,11 +333,9 @@ class MainWindow(QMainWindow):
 
         fileName, _ = QFileDialog.getSaveFileName(self, "Export as DXF","","DXF Files (*.dxf)")
         if fileName:
-            #doc = ezdxf.new("R2000", setup=True)
             doc = ezdxf.new("R2000")
             doc.units = units.MM
             msp = doc.modelspace()
-            #pline = msp.add_lwpolyline(self.points)
 
             for L in self.lines:
                 pstart = (L[0][0], L[0][1])
@@ -339,6 +343,37 @@ class MainWindow(QMainWindow):
                 msp.add_line(pstart, pstop)
 
             doc.saveas(fileName)
+
+    def onWriteSVG(self):
+        if not self.sprocketCanvas.getLines():
+            return            
+
+        fileName, _ = QFileDialog.getSaveFileName(self, "Export as SVG","","SVG Files (*.svg)")
+        if fileName:
+            w = self.max_outer_radius * 2
+            h = self.max_outer_radius * 2
+            dwg = svgwrite.Drawing(fileName, size=('{:f}mm'.format(w), '{:f}mm'.format(h)),
+                viewBox=('0 0 {:f} {:f}').format(w,h))
+
+            p = dwg.path(stroke=svgwrite.rgb(0, 0, 0, '%'), stroke_width=0.25)
+
+            firstCoordinate = True
+            for L in self.lines:
+                px = w/2 + L[0][0]
+                py = h/2 + L[0][1]
+                if firstCoordinate:
+                    p.push("M {:f} {:f}". format(px,py))
+                    firstCoordinate = False
+                else:
+                    p.push(" {:f} {:f}". format(px,py))
+
+                #pstart = (w/2 + L[0][0], h/2 + L[0][1])
+                #pstop  = (w/2 + L[1][0], h/2 + L[1][1])
+                #dwg.add(dwg.line(pstart, pstop, stroke=svgwrite.rgb(0, 0, 0, '%'), stroke_width=0.25))
+
+            dwg.add(p)
+
+            dwg.save()            
 
 def main():
     app = QApplication(sys.argv)
